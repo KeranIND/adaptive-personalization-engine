@@ -1,55 +1,110 @@
-# Adaptive Personalization Engine
+# Chanamill FitID Personalization Engine
 
-A small event-driven recommendation engine that updates user preference state from observed behavior and ranks products transparently.
+A public-safe implementation of the **core systems pattern behind Chanamill**: represent a shopper's body measurements and fit preferences as a versioned FitID, compare that profile against garment specifications, explain the recommendation, and learn from delivered-fit feedback.
 
-The point of this project is not to hide everything behind an ML model. It is to make the feedback loop inspectable: what happened, which features changed, why a product moved up or down, and how the system can reproduce a decision.
+This repository is directly tied to Chanamill's product architecture. It intentionally excludes proprietary measurement algorithms, private production code, provisional-patent details, supplier data, and any non-public fit heuristics.
 
-## Feedback loop
+## Core loop
 
 ```text
-Behavior event
-    ↓
-Event ingestion
-    ↓
-User feature state
-    ↓
-Scoring / ranking
-    ↓
-Recommendation
-    ↓
-Outcome event
-    ↺
+Measurement capture
+      ↓
+Versioned FitID
+  body measurements
+  fit preferences
+  style intent
+      ↓
+Garment specification
+  finished measurements
+  fabric/stretch metadata
+  construction attributes
+      ↓
+Explainable fit matcher
+      ↓
+Recommendation / MTM adjustments
+      ↓
+Purchase + delivered garment
+      ↓
+Fit feedback
+      ↓
+Updated FitID evidence
 ```
 
-## Events
+## Why this is not a generic recommender
 
-Supported examples:
+Apparel fit depends on the relationship between **two physical models**:
 
-- product_view
-- add_to_cart
-- purchase
-- skip
-- return
+1. the person's measurements and desired ease
+2. the garment's finished measurements and construction
 
-Each event contributes a configurable weight to category and attribute affinities.
+A category-affinity model alone cannot answer whether a shirt will fit someone's chest, shoulder, waist, or sleeve preference. The public implementation therefore separates:
 
-## Design principles
+- behavioral preference signals
+- body-measurement state
+- fit-preference state
+- garment specifications
+- fit-gap calculations
+- recommendation explanations
+- post-delivery feedback
 
-- deterministic scoring before opaque modeling
-- event history separated from derived feature state
-- reproducible recommendations
-- explainable per-feature contributions
-- easy path from in-memory prototype to persistent/event-stream implementation
+## Domain model
+
+```text
+FitID
+  ├── body measurements
+  ├── preferred ease by region
+  ├── fit preference
+  └── version
+
+GarmentSpec
+  ├── garment measurements
+  ├── fabric stretch
+  ├── silhouette
+  └── spec version
+
+FitAssessment
+  ├── region gaps
+  ├── risk flags
+  ├── score
+  └── explanations
+```
 
 ## Repository structure
 
 ```text
 src/personalization/
+  fitid.py
+  garment.py
+  matching.py
+  feedback.py
   events.py
   profile.py
   ranking.py
+
 tests/
+  test_fit_matching.py
+  test_feedback.py
   test_ranking.py
+
+docs/
+  fitid-architecture.md
 ```
 
-This is a generic public reference implementation. It does not contain Chanamill's proprietary FitID or fit-matching logic.
+The original event/ranking modules remain because Chanamill also needs to distinguish **fit intelligence** from **behavioral personalization**. A shopper can prefer a style while still being a poor fit for a specific garment spec.
+
+## Public implementation principles
+
+- explicit calculations instead of opaque recommendations
+- immutable profile/spec versions for reproducibility
+- region-level fit explanations
+- fit feedback stored as evidence, not destructive overwrites
+- separation of fit, style, and behavioral signals
+- deterministic baseline that can later be augmented with learned models
+
+## Relationship to the product
+
+Chanamill already includes FitID creation, measurement onboarding, explainable apparel recommendations, garment visualization, and made-to-measure flows. Additional body-capture and 3D/phone-measurement work is being developed separately. This repository presents the underlying domain architecture in a form that can be publicly reviewed without publishing the production application or protected IP.
+
+Product: https://chanamill.com
+
+Demo: https://youtu.be/Ucau6x7gyYk
